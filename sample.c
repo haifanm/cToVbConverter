@@ -1,7 +1,12 @@
-if(true){
-	int b;
-}
-else{
+#include<stdio.h>
+main(){
+	if(true){
+		i=1;
+		
+	}
+	else{
+			
+	}
+	
 
-	printf("%d",n);
 }
