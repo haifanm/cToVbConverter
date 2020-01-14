@@ -5,32 +5,42 @@
 int linecount=1;
 int paracount=0;
 int bracketcount=0;
+int valid=1;
 %}
 
 %option noyywrap
 end			[<<EOF>>] 
 newline		\n
-unknownchar [@#$^_]
-keywords	("void"|"main"|"int"|"double"|"float"|"char"|"for"|"while"|"if"|"else"|"printf"|"scanf"|"true"|"false")
+unknownchar [@$^_]
+imports ("#include<stdio.h>"|"#include<string.h>"|"#include<math.h>") 
+mainfunc ("main()")
+type  ("int"|"char"|"float"|"double")
 space		[ \t\n]
 number     ([0-9])+
 identifier  ([a-zA-Z])+
 operator    [+-/*%<>=!]
 compare		("<"|"<="|">="|">"|"=="|"!=")
 semi		;
+a "%d"|"%f"|"%c"|"%s"  
+id [a-zA-Z][a-zA-Z0-9]* 
+chara ["]
+openbracket [(]
+closebracket [)]
+input ["printf"] 
+coma ","
 char		"'"[a-zA-Z]"'"
 expression	({number}|{identifier})([+-/*%]({number}|{identifier}))*|{char}
-Declare		[ \t]*("int"|"double"|"float"|"char")(" ")+{identifier}(" ")*("="(" ")*{expression})?
-multipleDec [ \t]*("int"|"double"|"float"|"char")(" ")+{identifier}(" ")*(","{identifier}(" ")*)+
-initialize	{identifier}(" ")*"="(" ")*{expression}
+Declare		[ \t]*{type}(" ")+{identifier}(" ")*("="(" ")*{expression})?
+initialize	[ \t]*{identifier}(" ")*"="(" ")*{expression}
+printstate  [ \t]*({input}*{openbracket}*{chara}*({a}*|.*)*{chara}*{coma}*{id}*{closebracket}{semi})
+statement	[ \t]*({initialize}|{Declare}|{printstate})(" ")*";"
 
-printf		[ \t]*"printf(\"""\")"|"printf("{expression}")"
+condition	{expression}{compare}{expression}|"true"|"false"
 
-statement	[ \t]*({initialize}|{Declare}|{multipleDec})(" ")*";"
 
-ifstate	"if("{condition}")"({space})*"{"({space})*(({statement}){newline})*({space})*"}"({space})*("else"({space})*"{"({space})*{statement}*({space})*"}"({space})*)?
+ifstate		"if("{condition}")"({space})*"{"({space})*(({statement}|{initialize}|{Declare}|{printstate}){newline})*({space})*"}"({space})*
+elsestate	"if("{condition}")"({space})*"{"({space})*(({statement}|{initialize}|{Declare}|{printstate}){newline})*({space})*"}"({space})*"else"({space})*"{"({space})*(({statement}|{initialize}|{Declare}|{printstate}){newline})*({space})*"}"({space})*
 
-condition	{expression}{compare}{expression}|"true"|"false"|"1"|"0"
 
 %%
 {newline}			{linecount++;}
@@ -41,13 +51,15 @@ condition	{expression}{compare}{expression}|"true"|"false"|"1"|"0"
 
 {unknownchar}		{printf("line %d: unknown character \n",linecount);} 
 
+{imports}  {count_lines(yytext);}
+{mainfunc} {count_lines(yytext);}
 
-
-({Declare}|{initialize})[" "]*{newline} {printf("line %d: missing ; \n",linecount++);} 
+({Declare}|{initialize})[" "]*{newline} {valid=0; printf("line %d: missing ; \n",linecount++);} 
 {Declare}|{initialize}	   {printf("line %d: error \n",linecount);} 
-{printf}			{printf("PRINTING");}
 
 {ifstate}		    {count_lines(yytext);}
+{elsestate}		    {count_lines(yytext);}
+{printstate}		{printf("this is a print!");}
 {statement}			{printf("this is a statement on line %d \n",linecount);}  
 
 
@@ -57,11 +69,20 @@ condition	{expression}{compare}{expression}|"true"|"false"|"1"|"0"
 					  if(paracount<0) printf("line %d: missing (\n",linecount);
 					  if(bracketcount>0) printf("line %d: missing }\n",linecount);
 					  if(bracketcount<0) printf("line %d: missing {\n",linecount);
-					  printf("END!! %d \n",linecount); yyterminate();}
+					  if(valid){
+						printf("your code is valid :)"); printf("END!! %d \n",linecount); yyterminate();
+					  }
+					  else{
+						printf("Your code is not valid, fix your errors and try again.."); printf("END!! %d \n",linecount); yyterminate();
+					  }
+					  
+					  }
 %%
 
 skip_line_error(void)
 {
+	valid=0;
+	
   printf("line %d: error \n",linecount++);
   
   int c;
@@ -84,19 +105,7 @@ count_lines(char *  yytext){
 	}
 }
 
-check_bracket(){
-	printf("COUNTING LINES! \n");
-	size_t i = 0;
-	while (yytext[i] != '\0') { 
-		if(yytext[i]==')' && yytext[i+1]=='{'){   bracketcount++;    }
-		i++;
-	}
-}
-
-
 main() {
 yylex();
 printf("\n============================================================================");
 }
-
-

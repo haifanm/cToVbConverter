@@ -1,8 +1,7 @@
-if(true)
-{
+if(true){
+	int b;
+}
+else{
 
-		x=1 
-		int x='c' 
-	
-
+	printf("%d",n);
 }
